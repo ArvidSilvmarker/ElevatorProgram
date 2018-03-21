@@ -1,17 +1,46 @@
 ﻿using System;
 using System.Threading;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace ElevatorProgram
 {
  
 
-    class ElevatorProgram
+    public class ElevatorProgram
     {
         static void Main(string[] args)
         {
             ElevatorProgram app = new ElevatorProgram();
             app.Run();
+        }
+
+        public void Demo()
+        {
+            Console.Write("Sammanlagt antal våningar: ");
+            int floors = Convert.ToInt32(Console.ReadLine());
+            Console.Write("Antal källarvåningar: ");
+            int cellarFloors = Convert.ToInt32(Console.ReadLine());
+            Console.Write("Antal hissar: ");
+            int numberOfElevators = Convert.ToInt32(Console.ReadLine());
+
+            var b = new Building(-cellarFloors, floors - cellarFloors);
+            b.GeneratorElevators(numberOfElevators);
+
+            Console.Clear();
+            b.DrawBuilding();
+
+            Random random = new Random();
+            while (true)
+            {
+                Console.WriteLine();
+                ClearLines(2);
+                int elevatorNumber = random.Next(1, numberOfElevators + 1);
+                int moveToFloor = random.Next(b.LowestFloor, b.HighestFloor + 1);
+
+                b.MoveElevator(elevatorNumber, moveToFloor);
+
+            }
         }
 
         public void Run()
@@ -32,11 +61,23 @@ namespace ElevatorProgram
                 int elevatorNumber = Convert.ToInt32(input);
 
                 Console.Write("Till våning nummer: ");
-                int moveToFloor = Convert.ToInt32(Console.ReadLine());
+                int moveToFloor = GetFloorNumber(Console.ReadLine());
 
                 b.MoveElevator(elevatorNumber, moveToFloor);
             }
 
+        }
+
+        private int GetFloorNumber(string input)
+        {
+
+            if (new Regex(@"[kK]0*\d+").IsMatch(input))                 //källarvåningar (tex. K01)
+                return -1 * Convert.ToInt32(new Regex(@"[1-9]+\d*").Match(input).ToString());
+            if (new Regex(@"[bB][vV]").IsMatch(input))                   //BV
+                return 0;
+            if (new Regex(@"-*\d+").IsMatch(input))                     //bara siffror, inkl negativa
+                return Convert.ToInt32(input);
+            throw new ArgumentException("Måste skriva en siffra.");
         }
 
         public void ClearLines(int lines)
@@ -45,13 +86,12 @@ namespace ElevatorProgram
             {
                 Console.WriteLine("                                          ");
             }
-
             Console.SetCursorPosition(0, Console.CursorTop - lines);
         }
 
     }
 
-    class Building
+    public class Building
     {
         public int HighestFloor { get; private set; }
         public int LowestFloor { get; private set; }
@@ -114,22 +154,23 @@ namespace ElevatorProgram
         public void MoveElevator(int elevatorNumber, int targetFloor)
         {
             var elevator = Elevators[elevatorNumber - 1];
-            while (true)
-            {
-                if (targetFloor < elevator.CurrentFloor)
-                    elevator.GoDown();
-                else if (targetFloor > elevator.CurrentFloor)
-                    elevator.GoUp();
-                else
-                    break;
-                DrawBuilding();
-                Thread.Sleep(500);
+            if (elevator.LowestFloor <= targetFloor && targetFloor <= elevator.HighestFloor)
+                while (true)
+                {
+                    if (targetFloor < elevator.CurrentFloor)
+                        elevator.GoDown();
+                    else if (targetFloor > elevator.CurrentFloor)
+                        elevator.GoUp();
+                    else
+                        break;
+                    DrawBuilding();
+                    Thread.Sleep(500);
 
-            }
+                }
         }
     }
 
-    class Elevator
+    public class Elevator
     {
         public int HighestFloor { get; private set; }
         public int LowestFloor { get; private set; }
@@ -138,17 +179,22 @@ namespace ElevatorProgram
 
         public Elevator(string name, int lowestFloor, int highestFloor, int startFloor)
         {
-            if (name == null)
-                throw new NullReferenceException("Namn kan inte vara null.");
-            else
-                Name = name;
+            if (String.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Name kan inte vara null eller tom.");
+            if (name.Length > 8)
+                throw new ArgumentException("Name får inte vara mer än 8 tecken.");
+            Name = name;
+
             LowestFloor = lowestFloor;
-            if (highestFloor > lowestFloor)
-                HighestFloor = highestFloor;
-            else
-                HighestFloor = lowestFloor + 1;
-            if (startFloor >= lowestFloor && startFloor <= highestFloor)
-                CurrentFloor = startFloor;
+
+            if (highestFloor <= lowestFloor)
+                throw new ArgumentOutOfRangeException("HighestFloor måste ligga över LowestFloor.");
+            HighestFloor = highestFloor;
+
+            if (startFloor < lowestFloor || startFloor > highestFloor)
+                throw new ArgumentOutOfRangeException("StartFloor måste vara en tillåten våning.");
+            CurrentFloor = startFloor;
+
         }
 
         public Elevator(string name, int lowestFloor, int highestFloor) : this(name, lowestFloor, highestFloor,
@@ -164,15 +210,17 @@ namespace ElevatorProgram
 
         public void GoUp()
         {
-            if (CurrentFloor < HighestFloor)
-                CurrentFloor++;
+            if (CurrentFloor >= HighestFloor)
+                throw new InvalidOperationException("Hissen kan inte åka ovanför översta våningen.");
+            CurrentFloor++;
             WriteMessage($"{Name} är på våning {CurrentFloor}");
         }
 
         public void GoDown()
         {
-            if (CurrentFloor > LowestFloor)
-                CurrentFloor--;
+            if (CurrentFloor <= LowestFloor)
+                throw new InvalidOperationException("Hissen kan inte åka under nedersta våningen.");
+            CurrentFloor--;
             WriteMessage($"{Name} är på våning {CurrentFloor}");
         }
 
