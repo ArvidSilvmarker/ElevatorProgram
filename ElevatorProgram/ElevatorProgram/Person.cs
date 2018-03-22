@@ -52,8 +52,10 @@ namespace ElevatorProgram
                         : random.Next(Building.LowestFloor, Building.HighestFloor + 1);
 
                     TargetFloor = CurrentFloor != Building.GroundFloor
-                        ? Building.GroundFloor
-                        : random.Next(Building.LowestFloor, Building.HighestFloor + 1);
+                        ? FlipCoin(3) 
+                            ? random.Next(Building.LowestFloor, Building.HighestFloor + 1)
+                            :Building.GroundFloor
+                        :random.Next(Building.LowestFloor, Building.HighestFloor + 1);
                 }
 
             }
@@ -73,6 +75,14 @@ namespace ElevatorProgram
         {
             Random random = new Random();
             if (random.Next(0, 2) == 0)
+                return true;
+            return false;
+        }
+
+        public bool FlipCoin(int i)
+        {
+            Random random = new Random();
+            if (random.Next(0, i) == 0)
                 return true;
             return false;
         }

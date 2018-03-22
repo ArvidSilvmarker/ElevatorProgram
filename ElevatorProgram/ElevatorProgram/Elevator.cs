@@ -66,7 +66,7 @@ namespace ElevatorProgram
             if (CurrentFloor != TargetFloor)
             {
                 Status = ElevatorState.Busy;
-                Message = $"{Name} är på våning {CurrentFloor} på väg mot våning {TargetFloor}";
+                Message = $"{Name} är på våning {CurrentFloor} på väg mot våning {TargetFloor}.";
             }
             else
             {
@@ -84,7 +84,7 @@ namespace ElevatorProgram
             if (CurrentFloor != TargetFloor)
             {
                 Status = ElevatorState.Busy;
-                Message = $"{Name} är på våning {CurrentFloor} på väg mot våning {TargetFloor}";
+                Message = $"{Name} är på våning {CurrentFloor} på väg mot våning {TargetFloor}.";
             }
             else
             {
@@ -95,13 +95,13 @@ namespace ElevatorProgram
         public void OpenDoor()
         {
             DoorIsOpen = true;
-            Message = $"{Name} öppnar dörrarna på våning {CurrentFloor}";
+            Message = $"{Name} öppnar dörrarna på våning {CurrentFloor}.";
         }
 
         public void CloseDoor()
         {
             DoorIsOpen = false;
-            Message = $"{Name} stänger dörrarna på våning {CurrentFloor}";
+            Message = $"{Name} stänger dörrarna på våning {CurrentFloor}.";
         }
 
         public int Count()

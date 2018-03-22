@@ -98,14 +98,21 @@ namespace ElevatorProgram
             {
                 Console.Write($"{GetFloorString(floor)}  : ");
                 var peopleInHallway = Building.GetPeopleInHallway(floor);
-                for (int hallwayPos = Building.MaxPeopleInHallway-1; hallwayPos <= 0 ; hallwayPos++)
+                for (int hallwayPos = Building.MaxPeopleInHallway-1; hallwayPos >= 0 ; hallwayPos--)
                 {
-                    if (peopleInHallway.Count < hallwayPos)
-                        Console.Write(" ");
+                    if (peopleInHallway.Count <= hallwayPos)
+                        Console.Write("  ");
                     else
                     {
                         Console.ForegroundColor = peopleInHallway[hallwayPos].Color;
-                        Console.Write($"{peopleInHallway[hallwayPos].TargetFloor}");
+                        if (peopleInHallway[hallwayPos].TargetFloor > 0 && peopleInHallway[hallwayPos].TargetFloor < 10)
+                            Console.Write($"{peopleInHallway[hallwayPos].TargetFloor:00}");
+                        else if (peopleInHallway[hallwayPos].TargetFloor == 0)
+                            Console.Write($"BV");
+                        else
+                            Console.Write($"{peopleInHallway[hallwayPos].TargetFloor}");
+
+                        Console.ResetColor();
                     }
 
 

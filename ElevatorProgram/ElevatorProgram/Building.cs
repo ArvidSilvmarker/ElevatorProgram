@@ -26,7 +26,8 @@ namespace ElevatorProgram
             else
                 GroundFloor = lowestFloor;
 
-            MaxPeopleInHallway = 8;
+            MaxPeopleInHallway = 6;
+            People = new List<Person>();
         }
 
         public void GenerateElevators(int numberOfElevators)
@@ -44,11 +45,12 @@ namespace ElevatorProgram
 
         public void GeneratePeople(int numberOfPeople)
         {
+
             for (int i = 0; i < numberOfPeople; i++)
                 People.Add(new Person(this));
         }
 
-        public void GeneratePoeple()
+        public void GeneratePeople()
         {
             GeneratePeople(MaxPeopleInHallway);
         }

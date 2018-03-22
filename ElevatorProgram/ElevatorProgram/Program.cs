@@ -12,7 +12,7 @@ namespace ElevatorProgram
         static void Main(string[] args)
         {
             ElevatorProgram app = new ElevatorProgram();
-            app.RandomPeople();
+            app.Demo();
         }
 
 
@@ -84,6 +84,7 @@ namespace ElevatorProgram
 
             var b = new Building(-cellarFloors, floors - cellarFloors);
             b.GenerateElevators(numberOfElevators);
+            b.GeneratePeople();
             var m = new Motor(b);
 
             Console.Clear();
@@ -103,12 +104,15 @@ namespace ElevatorProgram
         public void Run()
         {
             var b = new Building(-3, 10);
-            b.GenerateElevators(3);
+            int numberOfElevators = 3;
+            b.GenerateElevators(numberOfElevators);
+            b.GeneratePeople();
             var m = new Motor(b, 5, 1000);
             m.DrawBuilding();
 
             while (true)
             {
+                Console.SetCursorPosition(0, b.GetTotalHeight() + numberOfElevators + 2);
                 Console.WriteLine();
                 m.ClearLines(2);
 
