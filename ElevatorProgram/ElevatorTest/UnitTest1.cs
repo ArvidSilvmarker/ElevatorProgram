@@ -12,13 +12,13 @@ namespace ElevatorTest
         [TestMethod]
         public void StartFloorOverBound()
         {
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => new Elevator("Hiss1", 0, 1, 2));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => new Elevator("Hiss1", 0, 1, 2, 6, 500));
         }
 
         [TestMethod]
         public void StartFloorUnderBound()
         {
-            Assert.ThrowsException<ArgumentOutOfRangeException>(() => new Elevator("Hiss1", 0, 1, -1));
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => new Elevator("Hiss1", 0, 1, -1, 6, 600));
         }
 
     }
