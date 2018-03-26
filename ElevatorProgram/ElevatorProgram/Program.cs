@@ -12,28 +12,9 @@ namespace ElevatorProgram
         static void Main(string[] args)
         {
             ElevatorProgram app = new ElevatorProgram();
-            app.Demo();
+            app.Run();
         }
 
-
-        public void RandomPeople()
-        {
-            int count = 0;
-            var b = new Building(-3, 10);
-            var m = new Motor(b);
-            var p = new Person(b);
-            for (int i = 0; i < 10; i++)
-            {
-                var person = new Person(b);
-                Console.ForegroundColor = person.Color;
-                Console.WriteLine(
-                    $"Person {i} är på våning {person.CurrentFloor} och vill till våning {person.TargetFloor}.");
-                Console.WriteLine($"Vikt: {person.Weight}kg.");
-                Console.WriteLine();
-            }
-
-
-        }
 
 
         public void RandomColors()
@@ -71,63 +52,38 @@ namespace ElevatorProgram
 
 
         }
+    
 
-        public void Demo()
-        {
-            Console.Write("Sammanlagt antal våningar: ");
-            int floors = Convert.ToInt32(Console.ReadLine());
-            Console.Write("Antal källarvåningar: ");
-            int cellarFloors = Convert.ToInt32(Console.ReadLine());
-            Console.Write("Antal hissar: ");
-            int numberOfElevators = Convert.ToInt32(Console.ReadLine());
-
-
-            var b = new Building(-cellarFloors, floors - cellarFloors);
-            b.GenerateElevators(numberOfElevators);
-            b.GeneratePeople();
-            var m = new Motor(b);
-
-            Console.Clear();
-            m.DrawBuilding();
-
-            Random random = new Random();
-            while (true)
-            {
-                Console.WriteLine();
-                m.ClearLines(3);
-                m.UpdateRandom(Convert.ToInt32(Math.Floor(numberOfElevators/2.0)));
-
-            }
-        }
-       
 
         public void Run()
         {
-            var b = new Building(-3, 10);
-            int numberOfElevators = 3;
-            b.GenerateElevators(numberOfElevators);
+            var b = new Building(-3, 10, 2);
+            int numberOfElevators = 1;
+            b.GenerateElevators(numberOfElevators, 2);
             b.GeneratePeople();
-            var m = new Motor(b, 5, 1000);
+            var m = new Motor(b, 1000);
             m.DrawBuilding();
 
-            while (true)
-            {
-                Console.SetCursorPosition(0, b.GetTotalHeight() + numberOfElevators + 2);
-                Console.WriteLine();
-                m.ClearLines(2);
+            m.UpdateOnSpace();
 
-                Console.Write("Flytta hiss nummer: ");
-                string input = Console.ReadLine();
-                if (input.Trim().ToLower() == "quit")
-                    break;
-                int elevatorNumber = Convert.ToInt32(input);
+            //while (true)
+            //{
+            //    Console.SetCursorPosition(0, b.GetTotalHeight() + numberOfElevators + 2);
+            //    Console.WriteLine();
+            //    m.ClearLines(2);
 
-                Console.Write("Till våning nummer: ");
-                int moveToFloor = GetFloorNumber(Console.ReadLine());
+            //    Console.Write("Flytta hiss nummer: ");
+            //    string input = Console.ReadLine();
+            //    if (input.Trim().ToLower() == "quit")
+            //        break;
+            //    int elevatorNumber = Convert.ToInt32(input);
 
-                m.SetTarget(elevatorNumber, moveToFloor);
-                m.UpdateUntilAllWaiting();
-            }
+            //    Console.Write("Till våning nummer: ");
+            //    int moveToFloor = GetFloorNumber(Console.ReadLine());
+
+            //    m.SetTarget(elevatorNumber, moveToFloor);
+            //    m.UpdateUntilAllWaiting();
+            //}
 
         }
 

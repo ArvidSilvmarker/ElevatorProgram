@@ -9,22 +9,12 @@ namespace ElevatorProgram
     class Motor
     {
         public Building Building { get; private set; }
-        public List<Person> People { get; private set; }
+
         public uint UpdateSpeed { get; set; }
 
-        public Motor(Building b) : this(b, new Random().Next(1,7), 500) 
-        {
-        }
-
-        public Motor(Building b, int numberOfPeople, uint updateSpeed)
+        public Motor(Building b, uint updateSpeed)
         {
             Building = b ?? throw new NullReferenceException("Måste finnas en byggnad.");
-
-            if (numberOfPeople < 0)
-                throw new ArgumentException();
-            People = new List<Person>();
-            for (int i = 0; i < numberOfPeople; i++)
-                People.Add(new Person(b));
 
             if (updateSpeed > 1000000)
                 throw new ArgumentException("Woaaa! Alldeles för snabbt.");
@@ -55,37 +45,33 @@ namespace ElevatorProgram
                 Tick();
                 bool anybusy = false;
                 foreach (var elevator in Building.Elevators)
-                    if (elevator.Status == ElevatorState.Busy)
+                    if (elevator.Status != ElevatorState.Waiting)
                         anybusy = true;
                 if (!anybusy)
                     break;
             }
         }
 
-        public void UpdateRandom(int maxNumberOfConcurrentWaiting)
+        public void UpdateOnSpace()
         {
             while (true)
             {
-                Tick();
-                if (NumberOfWaiting() > maxNumberOfConcurrentWaiting)
-                    SetRandomTarget();
+                Char c = Console.ReadKey(true).KeyChar;
+
+                if (c == ' ')
+                    Tick();
+                if (c == 'q')
+                    break;
             }
-
-
         }
 
 
         public void Tick()
         {
             foreach (var elevator in Building.Elevators)
-            {
-                if (elevator.TargetFloor > elevator.CurrentFloor)
-                    elevator.GoUp();
-                else if (elevator.TargetFloor < elevator.CurrentFloor)
-                    elevator.GoDown();
-                else
-                    elevator.WaitOnFloor();
-            }
+                elevator.Update();
+            foreach (var person in Building.People)
+                person.Update();
             DrawBuilding();
             WriteAllMessages();
             Thread.Sleep(Convert.ToInt32(UpdateSpeed));
@@ -94,57 +80,133 @@ namespace ElevatorProgram
         public void DrawBuilding()
         {
             Console.SetCursorPosition(0, 0);
+            Console.WriteLine();
+            DrawGoingDirection();
             for (int floor = Building.HighestFloor; floor >= Building.LowestFloor; floor--)
             {
-                Console.Write($"{GetFloorString(floor)}  : ");
-                var peopleInHallway = Building.GetPeopleInHallway(floor);
-                for (int hallwayPos = Building.MaxPeopleInHallway-1; hallwayPos >= 0 ; hallwayPos--)
-                {
-                    if (peopleInHallway.Count <= hallwayPos)
-                        Console.Write("  ");
-                    else
-                    {
-                        Console.ForegroundColor = peopleInHallway[hallwayPos].Color;
-                        if (peopleInHallway[hallwayPos].TargetFloor > 0 && peopleInHallway[hallwayPos].TargetFloor < 10)
-                            Console.Write($"{peopleInHallway[hallwayPos].TargetFloor:00}");
-                        else if (peopleInHallway[hallwayPos].TargetFloor == 0)
-                            Console.Write($"BV");
-                        else
-                            Console.Write($"{peopleInHallway[hallwayPos].TargetFloor}");
+                Console.Write($"{GetFloorString(floor)}");
+                Console.Write($"{GetButtonString(floor)}");
+                DrawPeopleInHallway(Building.GetPeopleInHallway(floor));
+                DrawElevators(floor);
 
-                        Console.ResetColor();
-                    }
-
-
-                }
-                for (int elevatorPos = 0; elevatorPos < Building.Elevators.Count; elevatorPos++)
-                {
-                    if (Building.Elevators[elevatorPos].CurrentFloor == floor)
-                        Console.Write(" | H | ");
-                    else
-                        Console.Write(" |   | ");
-                }
                 Console.WriteLine();
             }
 
+        }
 
+        private void DrawGoingDirection()
+        {
+            int numberOfSpace = GetFloorString(Building.HighestFloor).Length + Building.MaxPeopleInHallway * 2 + 1 + GetButtonString(Building.HighestFloor).Length;
+            for (int i = 0; i < numberOfSpace; i++)
+                Console.Write(" ");
+            for (int elevatorPos = 0; elevatorPos < Building.Elevators.Count; elevatorPos++)
+            {
+                if (Building.Elevators[elevatorPos].TargetUp.Count > 0)
+                    Console.Write("^");
+                else
+                    Console.Write(" ");
 
+                if (Building.Elevators[elevatorPos].TargetDown.Count > 0)
+                    Console.Write("v");
+                else
+                    Console.Write(" ");
+
+                for (int posInElevator = 0;
+                    posInElevator < Building.Elevators[elevatorPos].Capacity;
+                    posInElevator++)
+                    Console.Write("  ");
+            }
+
+            Console.WriteLine();
+        }
+
+        private void DrawElevators(int floor)
+        {
+            for (int elevatorPos = 0; elevatorPos < Building.Elevators.Count; elevatorPos++)
+            {
+
+                if (Building.Elevators[elevatorPos].CurrentFloor == floor)
+                {
+                    Console.Write("|H");
+                    for (int posInElevator = 0;
+                        posInElevator < Building.Elevators[elevatorPos].Capacity;
+                        posInElevator++)
+                    {
+
+                        if (posInElevator < Building.Elevators[elevatorPos].Passengers.Count -1)
+                            DrawPerson(Building.Elevators[elevatorPos].Passengers[posInElevator]);
+                        else
+                            Console.Write("  ");
+                    }
+                    Console.Write("|"); 
+                }
+                else
+                {
+                    Console.Write("| ");
+                    for (int posInElevator = 0;
+                        posInElevator < Building.Elevators[elevatorPos].Capacity;
+                        posInElevator++)
+                        Console.Write("  ");
+                    Console.Write("|");
+                }
+
+            }
+        }
+
+        private void DrawPeopleInHallway(List<Person> peopleInHallway)
+        {
+            for (int hallwayPos = Building.MaxPeopleInHallway - 1; hallwayPos >= 0; hallwayPos--)
+            {
+                if (peopleInHallway.Count <= hallwayPos)
+                    Console.Write("  ");
+                else
+                    DrawPerson(peopleInHallway[hallwayPos]);
+            }
+        }
+
+        private void DrawPerson(Person person)
+        {
+            Console.ForegroundColor = person.Color;
+            if (person.TargetFloor > 0 && person.TargetFloor < 10)
+                Console.Write($"{person.TargetFloor:00}");
+            else if (person.TargetFloor == 0)
+                Console.Write($"BV");
+            else
+                Console.Write($"{person.TargetFloor}");
+
+            Console.ResetColor();
         }
 
         private string GetFloorString(int i)
         {
             if (i > 9 && i < 100)                               //tvåsiffrigt
-                return $" {i}";
+                return $" {i} : ";
             else if (i > 0 && i < 10)                           //ensiffrigt
-                return $"  {i}";
+                return $"  {i} : ";
             else if (i == 0)
-                return $" BV";
+                return $" BV : ";
             else if (i < 0 && i > -10)                          //ensiffrigt negativt
-                return $" K{Math.Abs(i)}";
+                return $" K{Math.Abs(i)} : ";
             else if (i < -9 && i > -100)                        //tvåsiffrigt negativt
-                return $"K{Math.Abs(i)}";
+                return $"K{Math.Abs(i)} : ";
             else
                 return i.ToString();
+        }
+
+        private string GetButtonString(int floor)
+        {
+            string text = "";
+            if (Building.IsUpButtonPressed(floor))
+                text += ("^");
+            else
+                text += (" ");
+
+            if (Building.IsDownButtonPressed(floor))
+                text += ("v");
+            else
+                text += (" ");
+            text += " ";
+            return text;
         }
         public void ClearLines(int lines)
         {
@@ -179,16 +241,7 @@ namespace ElevatorProgram
                 Console.WriteLine(elevator.Message);
         }
 
-        public void SetTarget(int elevatorNumber, int moveToFloor)
-        {
-            Building.Elevators[elevatorNumber -1].GoToFloor(moveToFloor);
-        }
 
-        private void SetRandomTarget()
-        {
-            var random = new Random();
-            SetTarget(random.Next(1,Building.Elevators.Count+1),random.Next(Building.LowestFloor,Building.HighestFloor+1));
-        }
 
         public int NumberOfWaiting()
         {

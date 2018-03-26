@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Xml.Linq;
 
 namespace ElevatorProgram
 {
@@ -11,8 +12,10 @@ namespace ElevatorProgram
         public int CurrentFloor { get; set; }
         public int Weight { get; set; }
         public ConsoleColor Color { get; set; }
-        public int ElevatorNumber { get; set; }
+        public Elevator Elevator { get; set; }
         public bool InElevator { get; set; }
+        public string Message { get; private set; }
+
 
         public Person(Building b)
         {
@@ -71,6 +74,94 @@ namespace ElevatorProgram
                 Color = (ConsoleColor)random.Next(9, 16);
         }
 
+        public void Update()
+        {
+            var elevators = Building.AvailableElevators(CurrentFloor, TargetFloor > CurrentFloor ? true : false); //lista med hissar som är tillgängliga att stiga in i och på väg åt rätt håll
+
+            //Ingen tillgänglig hiss på våningen.
+            if (!InElevator && elevators.Count == 0)
+                WaitOnFloor();
+
+            //Exakt en tillgänglig hiss på våningen.
+            else if (!InElevator && elevators.Count == 1)
+                GetInElevator(elevators[0]);
+
+            //Mer än en tillgänglig hiss på våningen.
+            else if (!InElevator && elevators.Count > 1)
+                GetInElevator(ChooseElevator(elevators));
+
+            //I en hiss med öppna dörrar.
+            else if (InElevator && Elevator.Door == DoorState.Open)
+                if (CurrentFloor == TargetFloor)
+                    GetOutOfElevator();
+                else
+                    WaitInElevator(Elevator);
+
+            //I en hiss med icke-öppna dörrar.
+                else if (InElevator && Elevator.Door != DoorState.Open)
+                 WaitInElevator(Elevator);
+        }
+
+        private void WaitInElevator(Elevator elevator)
+        {
+            AvoidEyeContact();
+        }
+
+        private void AvoidEyeContact()
+        {
+            //Dumdidum...
+        }
+
+        private Elevator ChooseElevator(List<Elevator> elevators)
+        {
+            Elevator roomiestElevator = elevators[0];
+            foreach (var elevator in elevators)
+            {
+                if (elevator.Capacity - Elevator.Passengers.Count >
+                    roomiestElevator.Capacity - roomiestElevator.Passengers.Count)
+                    roomiestElevator = elevator;
+            }
+
+            return roomiestElevator;
+        }
+
+        private void GetInElevator(Elevator elevator)
+        {
+            if (elevator.CurrentFloor != CurrentFloor)
+                throw new Exception($"Något har fått fel med CurrentFloor för en person och/eller {Elevator.Name}.");
+            if (Elevator != null)
+                throw new Exception();
+
+            InElevator = true;
+            Elevator = elevator;
+            Elevator.EnterPassenger(this);
+        }
+
+        private void GetOutOfElevator()
+        {
+            if (Elevator == null)
+                throw new NullReferenceException();
+            if (Elevator.CurrentFloor != CurrentFloor)
+                throw new Exception($"Något har fått fel med CurrentFloor för en person och/eller {Elevator.Name}.");
+
+            InElevator = true;
+            Elevator.ExitPassenger(this);
+            Elevator = null;
+
+
+        }
+
+
+        private void WaitOnFloor()
+        {
+            if (TargetFloor > CurrentFloor && !Building.IsUpButtonPressed(CurrentFloor))
+                Building.PressUpButton(CurrentFloor);
+            else if (TargetFloor < CurrentFloor && !Building.IsDownButtonPressed(CurrentFloor))
+                Building.PressDownButton(CurrentFloor);
+
+        }
+
+
         public bool FlipCoin()
         {
             Random random = new Random();
@@ -86,6 +177,8 @@ namespace ElevatorProgram
                 return true;
             return false;
         }
+
+
 
     }
 }
