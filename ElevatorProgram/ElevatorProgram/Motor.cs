@@ -65,17 +65,44 @@ namespace ElevatorProgram
             }
         }
 
+        public void UpdateManual()
+        {
+            while(true)
+                ManualTick();
+        }
+
+        public void ManualTick()
+        {
+            Building.GeneratePeople();
+            foreach (var elevator in Building.Elevators)
+            {
+                elevator.Update();
+                DrawBuilding();
+            }
+
+            foreach (var person in Building.People)
+            {
+                person.Update();
+                DrawBuilding();
+            }
+            Thread.Sleep(Convert.ToInt32(UpdateSpeed));
+            Building.CleanUp();
+            DrawBuilding();
+        }
 
         public void Tick()
         {
+            Building.GeneratePeople();
             foreach (var elevator in Building.Elevators)
                 elevator.Update();
             foreach (var person in Building.People)
                 person.Update();
             DrawBuilding();
+            Building.CleanUp();
             WriteAllMessages();
             Thread.Sleep(Convert.ToInt32(UpdateSpeed));
         }
+
 
         public void DrawBuilding()
         {
@@ -88,7 +115,6 @@ namespace ElevatorProgram
                 Console.Write($"{GetButtonString(floor)}");
                 DrawPeopleInHallway(Building.GetPeopleInHallway(floor));
                 DrawElevators(floor);
-
                 Console.WriteLine();
             }
 
@@ -101,12 +127,12 @@ namespace ElevatorProgram
                 Console.Write(" ");
             for (int elevatorPos = 0; elevatorPos < Building.Elevators.Count; elevatorPos++)
             {
-                if (Building.Elevators[elevatorPos].TargetUp.Count > 0)
+                if (Building.Elevators[elevatorPos].Status == ElevatorState.GoingUp)
                     Console.Write("^");
                 else
                     Console.Write(" ");
 
-                if (Building.Elevators[elevatorPos].TargetDown.Count > 0)
+                if (Building.Elevators[elevatorPos].Status == ElevatorState.GoingDown)
                     Console.Write("v");
                 else
                     Console.Write(" ");
@@ -127,13 +153,12 @@ namespace ElevatorProgram
 
                 if (Building.Elevators[elevatorPos].CurrentFloor == floor)
                 {
-                    Console.Write("|H");
+                    DrawDoors(Building.Elevators[elevatorPos]);
                     for (int posInElevator = 0;
                         posInElevator < Building.Elevators[elevatorPos].Capacity;
                         posInElevator++)
                     {
-
-                        if (posInElevator < Building.Elevators[elevatorPos].Passengers.Count -1)
+                        if (posInElevator < Building.Elevators[elevatorPos].Passengers.Count)
                             DrawPerson(Building.Elevators[elevatorPos].Passengers[posInElevator]);
                         else
                             Console.Write("  ");
@@ -151,6 +176,24 @@ namespace ElevatorProgram
                 }
 
             }
+        }
+
+        private void DrawDoors(Elevator elevator)
+        {
+            switch (elevator.Door)
+            {
+                case DoorState.Closed:
+                    Console.Write("|H");
+                    break;
+                case DoorState.Closing:
+                case DoorState.Opening:
+                    Console.Write(" H");
+                    break;
+                case DoorState.Open:
+                    Console.Write("  ");
+                    break;
+            }
+
         }
 
         private void DrawPeopleInHallway(List<Person> peopleInHallway)
@@ -208,24 +251,17 @@ namespace ElevatorProgram
             text += " ";
             return text;
         }
-        public void ClearLines(int lines)
-        {
-            for (int i = 0; i < lines; i++)
-            {
-                Console.WriteLine("                                                                  ");
-            }
-            Console.SetCursorPosition(0, Console.CursorTop - lines);
-        }
+
 
         public void WriteMessage(string text)
         {
-            Console.SetCursorPosition(0, Building.GetTotalHeight() + 6);
+            Console.SetCursorPosition(0, Building.GetTotalHeight() + 10);
             Console.WriteLine(text);
         }
 
         public void WriteMessage(string[] texts)
         {
-            Console.SetCursorPosition(0, Building.GetTotalHeight() + 6);
+            Console.SetCursorPosition(0, Building.GetTotalHeight() + 10);
             foreach (var text in texts)
             {
                 Console.WriteLine(text);
@@ -235,8 +271,8 @@ namespace ElevatorProgram
         public void WriteAllMessages()
         {
 
-            Console.SetCursorPosition(0, Building.GetTotalHeight() + 2);
-            ClearLines(Building.Elevators.Count);
+            Console.SetCursorPosition(0, Building.GetTotalHeight() + 6);
+            ElevatorProgram.ClearLines(Building.Elevators.Count);
             foreach (var elevator in Building.Elevators)
                 Console.WriteLine(elevator.Message);
         }

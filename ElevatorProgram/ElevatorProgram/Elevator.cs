@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.Http.Headers;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
@@ -9,7 +10,7 @@ namespace ElevatorProgram
 {
     public enum ElevatorState
     {
-        GoingUp, GoingDown, Waiting, GoingDirectly
+        GoingUp, GoingDown, Waiting, GoingTo
     }
 
     public enum DoorState
@@ -26,20 +27,24 @@ namespace ElevatorProgram
         public string Name { get; private set; }
         public uint MaximumWeight { get; private set; }
         public uint Capacity { get; private set; }
-        public List<int> TargetUp { get; private set; }
-        public List<int> TargetDown { get; private set; }
-        public int DirectTargetFloor { get; private set; }
+        public List<int> TargetList { get; private set; }
+        public int GoToFloor { get; set; }
+        public Direction GoToDirection { get; set; }
         public string Message { get; set; }
-        public ElevatorState Status  { get; private set; }
+        public ElevatorState Status { get; set; }
         public List<Person> Passengers { get; private set; }
         public Building Building { get; private set; }
-        public bool GoDirectly { get; set; }
+        public DecisionMaker Logic { get; set; }
 
 
-        public Elevator(Building building, string name, int lowestFloor, int highestFloor, int startFloor, uint capacity,
+
+
+        public Elevator(Building building, DecisionMaker logic, string name, int lowestFloor, int highestFloor,
+            int startFloor, uint capacity,
             uint maximumWeight)
         {
             Building = building ?? throw new NullReferenceException("Hissen måste ha en byggnad.");
+            Logic = logic ?? throw new NullReferenceException("Hissen måste ha en AI.");
 
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Name kan inte vara null eller tom.");
@@ -67,86 +72,50 @@ namespace ElevatorProgram
 
             Door = DoorState.Closed;
             Status = ElevatorState.Waiting;
-            TargetUp = new List<int>();
-            TargetDown = new List<int>();
+            TargetList = new List<int>();
             Passengers = new List<Person>();
 
         }
 
 
 
-        public void GoingUp()
+        public void GoUp()
         {
-            int targetFloor = GetNextTarget();
+            if (Door != DoorState.Closed)
+                throw new Exception("Dörrarna måste vara stängda.");
+            if (CurrentFloor == HighestFloor)
+                throw new Exception("Kan inte åka till himlen.");
 
-            if (CurrentFloor >= HighestFloor)
-                throw new InvalidOperationException("Hissen kan inte åka ovanför översta våningen.");
-
-            if (Building.IsUpButtonPressed(CurrentFloor) || targetFloor == CurrentFloor)
-            {
-                TargetUp.RemoveAll(IsCurrentFloor);
-                Building.ButtonUpPressed.RemoveAll(IsCurrentFloor);
-                OpenDoor();
-            }
-            else
-            {
-                CurrentFloor++;
-                Message = $"{Name} är på våning {CurrentFloor} på väg mot våning {targetFloor}.";
-            }  
-        }
-
-        public void GoingDown()
-        {
-            int targetFloor = GetNextTarget();
-
-            if (CurrentFloor <= LowestFloor)
-                throw new InvalidOperationException("Hissen kan inte åka under nedersta våningen.");
-
-            if (Building.IsDownButtonPressed(CurrentFloor) || targetFloor == CurrentFloor)
-            {
-                TargetDown.RemoveAll(IsCurrentFloor);
-                Building.ButtonDownPressed.RemoveAll(IsCurrentFloor);
-                OpenDoor();
-            }
-            else
-            {
-                CurrentFloor--;
-                Message = $"{Name} är på våning {CurrentFloor} på väg mot våning {targetFloor}.";
-            }
-        }
-
-        public void GoToTarget()
-        {
-           
+            CurrentFloor++;
+            Message = $"{Name} är på våning {CurrentFloor}.";
 
         }
 
-        public void OpenDoor()
+        public void GoDown()
         {
-            if (Door == DoorState.Opening)
+            if (Door != DoorState.Closed)
+                throw new Exception("Dörrarna måste vara stängda.");
+            if (CurrentFloor == LowestFloor)
+                throw new Exception("Kan inte åka till helvetet.");
+            CurrentFloor--;
+            Message = $"{Name} är på våning {CurrentFloor}.";
+
+        }
+
+
+        public void CycleDoor()
+        {
+            if (Door == DoorState.Closed)
             {
                 Message = $"{Name} har öppnat dörrarna på våning {CurrentFloor}.";
                 Door = DoorState.Open;
             }
-            else
+            else if (Door == DoorState.Open)
             {
-                Message = $"{Name} öppnar dörrarna på våning {CurrentFloor}.";
-                Door = DoorState.Opening;
-            }
-        }
-
-        public void CloseDoor()
-        {
-            if (Door == DoorState.Closing)
-            {
-                Message = $"{Name} har stängat dörrarna på våning {CurrentFloor}.";
+                Message = $"{Name} har stängt dörrarna på våning {CurrentFloor}.";
                 Door = DoorState.Closed;
             }
-            else
-            {
-                Message = $"{Name} stänger dörrarna på våning {CurrentFloor}.";
-                Door = DoorState.Closing;
-            }
+
 
         }
 
@@ -164,84 +133,69 @@ namespace ElevatorProgram
 
         public void WaitOnFloor()
         {
-            Message = $"{Name} är på våning {CurrentFloor}. ";  //Dörrarna är {(DoorIsOpen ? "öppna" : "stängda")}.";
+            Message = $"{Name} är på våning {CurrentFloor}. "; //Dörrarna är {(DoorIsOpen ? "öppna" : "stängda")}.";
         }
 
         public void Update()
         {
-            if (Door == DoorState.Closing)
-                CloseDoor();
-            else if (Door == DoorState.Opening)
-                OpenDoor();
-            else if (Status == ElevatorState.GoingUp)
-                GoingUp();
-            else if (Status == ElevatorState.GoingDown)
-                GoingDown();
-            else if (Status == ElevatorState.GoingDirectly)
-                GoToTarget();
-            else
-                WaitOnFloor();
-
-            Status = ChangeStatus();
-
-        }
-
-        private ElevatorState ChangeStatus()
-        {
-            if (Status == ElevatorState.GoingDirectly && DirectTargetFloor == CurrentFloor)
-                Status = ElevatorState.Waiting;
-            if (TargetUp.Count == 0 && TargetDown.Count == 0)
-                Status = ElevatorState.Waiting;
-            else if (Status == ElevatorState.GoingDown && TargetDown.Count == 0)
-                Status = ElevatorState.GoingUp;
-            else if (Status == ElevatorState.GoingUp && TargetUp.Count == 0)
-                Status = ElevatorState.GoingDown;
-
-        }
-
-        private int GetNextTarget()
-        {
-            int next = Status == ElevatorState.GoingUp ? HighestFloor : LowestFloor;
-            if (Status == ElevatorState.GoingUp)
+            Move nextMove = Logic.GetNextMove(this);
+            switch (nextMove)
             {
-                for (int floor = HighestFloor; floor >= CurrentFloor; floor--)
-                    if (TargetUp.Contains(floor))
-                        next = floor;
-            }
-            else if (Status == ElevatorState.GoingDown)
-            {
-                for (int floor = LowestFloor; floor <= CurrentFloor; floor++)
-                    if (TargetDown.Contains(floor))
-                        next = floor;
+                case Move.CycleDoor:
+                    CycleDoor();
+                    break;
+                case Move.GoUp:
+                    GoUp();
+                    Status = ElevatorState.GoingUp;
+                    break;
+                case Move.GoDown:
+                    GoDown();
+                    Status = ElevatorState.GoingDown;
+                    break;
+                case Move.GoTo:
+                    GoToTarget();
+                    break;
+                default:
+                    WaitOnFloor();
+                    Status = ElevatorState.Waiting;
+                    break;
             }
 
-            return next;
-
         }
 
+        private void GoToTarget()
+        {
+            ElevatorProgram.PrintText($"GoToFloor: {GoToFloor}");
+            if (GoToFloor == CurrentFloor)
+            {
+                if (GoToDirection == Direction.Down)
+                {
+                    Status = ElevatorState.GoingDown;
+                    CycleDoor();
+                }
+                else
+                {
+                    Status = ElevatorState.GoingUp; 
+                    CycleDoor();
+                }
+            }
+            else if (GoToFloor > CurrentFloor)
+                GoUp();
+            else if (GoToFloor < CurrentFloor)
+                GoDown();
+        }
 
         public void EnterPassenger(Person person)
         {
+            if (person == null)
+                throw new NullReferenceException("Person får inte vara null.");
             if (Passengers.Count >= Capacity)
                 throw new Exception($"Något har gått fel med Capacity för {Name}.");
-
             if (person.TargetFloor == CurrentFloor)
                 throw new Exception($"Personen har gått in i en hiss, fast den är på sin TargetFloor.");
 
             Passengers.Add(person);
-            if (person.TargetFloor > CurrentFloor)
-            {
-                TargetUp.Add(person.TargetFloor);
-                if (Status == ElevatorState.Waiting)
-                    Status = ElevatorState.GoingUp;
-            }
-
-            if (person.TargetFloor < CurrentFloor)
-            {
-                TargetDown.Add(person.TargetFloor);
-                if (Status == ElevatorState.Waiting)
-                    Status = ElevatorState.GoingDown;
-            }
+            TargetList.Add(person.TargetFloor);
         }
 
         public bool IsCurrentFloor(int floor)
@@ -252,22 +206,14 @@ namespace ElevatorProgram
         public void ExitPassenger(Person person)
         {
             Passengers.Remove(person);
+            TargetList.Remove(CurrentFloor);
         }
 
-        public void AddTarget(int targetFloor, bool goingUp)
+        public void SetGoToTarget(Command nextTarget)
         {
-            if (Status == ElevatorState.Waiting && GoDirectly)
-            {
-                Status = ElevatorState.GoingDirectly;
-                DirectTargetFloor = targetFloor;
-            }
-            else
-            { 
-                if (goingUp)
-                    TargetUp.Add(targetFloor);
-                else
-                    TargetDown.Add(targetFloor);
-            }
+            Status = ElevatorState.GoingTo;
+            GoToDirection = nextTarget.Direction;
+            GoToFloor = nextTarget.Floor;
         }
     }
 

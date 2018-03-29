@@ -76,6 +76,9 @@ namespace ElevatorProgram
 
         public void Update()
         {
+            if (InElevator)
+                CurrentFloor = Elevator.CurrentFloor;
+
             var elevators = Building.AvailableElevators(CurrentFloor, TargetFloor > CurrentFloor ? true : false); //lista med hissar som är tillgängliga att stiga in i och på väg åt rätt håll
 
             //Ingen tillgänglig hiss på våningen.
@@ -85,7 +88,7 @@ namespace ElevatorProgram
             //Exakt en tillgänglig hiss på våningen.
             else if (!InElevator && elevators.Count == 1)
                 GetInElevator(elevators[0]);
-
+                
             //Mer än en tillgänglig hiss på våningen.
             else if (!InElevator && elevators.Count > 1)
                 GetInElevator(ChooseElevator(elevators));
@@ -117,7 +120,7 @@ namespace ElevatorProgram
             Elevator roomiestElevator = elevators[0];
             foreach (var elevator in elevators)
             {
-                if (elevator.Capacity - Elevator.Passengers.Count >
+                if (elevator.Capacity - elevator.Passengers.Count >
                     roomiestElevator.Capacity - roomiestElevator.Passengers.Count)
                     roomiestElevator = elevator;
             }
@@ -134,7 +137,8 @@ namespace ElevatorProgram
 
             InElevator = true;
             Elevator = elevator;
-            Elevator.EnterPassenger(this);
+            elevator.EnterPassenger(this);
+            Building.ResetButton(CurrentFloor, (TargetFloor > CurrentFloor) ? ElevatorState.GoingUp : ElevatorState.GoingDown);
         }
 
         private void GetOutOfElevator()
@@ -144,7 +148,7 @@ namespace ElevatorProgram
             if (Elevator.CurrentFloor != CurrentFloor)
                 throw new Exception($"Något har fått fel med CurrentFloor för en person och/eller {Elevator.Name}.");
 
-            InElevator = true;
+            InElevator = false;
             Elevator.ExitPassenger(this);
             Elevator = null;
 
@@ -158,6 +162,7 @@ namespace ElevatorProgram
                 Building.PressUpButton(CurrentFloor);
             else if (TargetFloor < CurrentFloor && !Building.IsDownButtonPressed(CurrentFloor))
                 Building.PressDownButton(CurrentFloor);
+
 
         }
 

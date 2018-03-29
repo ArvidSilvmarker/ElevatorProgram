@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 
@@ -11,12 +12,12 @@ namespace ElevatorProgram
         public int LowestFloor { get; private set; }
         public int GroundFloor { get; private set; }
         public int MaxPeopleInHallway { get; private set; }
-        public List<int> ButtonUpPressed { get; private set; }
-        public List<int> ButtonDownPressed { get; private set; }
+        public List<Command> ButtonPressed { get; private set; }
         public List<Elevator> Elevators { get; private set; }
         public List<Person> People { get; private set; }
+        public DecisionMaker Logic { get; private set; }
 
-        public Building(int lowestFloor, int highestFloor, int maxPeopleInHallway)
+        public Building(int lowestFloor, int highestFloor, int maxPeopleInHallway, string logic)
         {
             if (highestFloor <= lowestFloor)
                 throw new ArgumentException("Översta våningen måste vara ovanför understa våningen.");
@@ -29,8 +30,12 @@ namespace ElevatorProgram
 
             MaxPeopleInHallway = maxPeopleInHallway;
             People = new List<Person>();
-            ButtonUpPressed = new List<int>();
-            ButtonDownPressed = new List<int>();
+            ButtonPressed = new List<Command>();
+
+            if (logic == "Manual")
+                Logic = new DecisionManual();
+            else
+                Logic = new DecisionClassic(this);
         }
 
         public void GenerateElevators(int numberOfElevators)
@@ -46,14 +51,14 @@ namespace ElevatorProgram
             int startFloor = LowestFloor > 0 ? LowestFloor : 0;
             for (int i = 0; i < numberOfElevators; i++)
             {
-                Elevators.Add(new Elevator(this, $"Hiss {i + 1}", LowestFloor, HighestFloor, startFloor, capacity, maxWeight));
+                Elevators.Add(new Elevator(this, Logic, $"Hiss {i + 1}", LowestFloor, HighestFloor, startFloor, capacity, maxWeight));
             }
         }
 
         public void GeneratePeople(int numberOfPeople)
         {
 
-            for (int i = 0; i < numberOfPeople; i++)
+            for (int i = People.Count; i < numberOfPeople; i++)
                 People.Add(new Person(this));
         }
 
@@ -103,36 +108,54 @@ namespace ElevatorProgram
 
         public bool IsUpButtonPressed(int floor)
         {
-            return ButtonUpPressed.Contains(floor);
+            return ButtonPressed.Where(command => command.Direction == Direction.Up).Any(command => command.Floor == floor);
         }
 
         public bool IsDownButtonPressed(int floor)
         {
-            return ButtonDownPressed.Contains(floor);
+            return ButtonPressed.Where(command => command.Direction == Direction.Down).Any(command => command.Floor == floor);
         }
 
         public void PressUpButton(int floor)
         {
-            ButtonUpPressed.Add(floor);
-            SendElevator(floor, true);
+            ButtonPressed.Add(new Command(floor, Direction.Up));
+            
         }
         public void PressDownButton(int floor)
         {
-            ButtonDownPressed.Add(floor);
-            SendElevator(floor, false);
+            ButtonPressed.Add(new Command(floor, Direction.Down));
+            
         }
 
-        public void SendElevator(int floor, bool upButtonPressed)
+
+        public void CleanUp()
         {
-            SendRandomElevator(floor, upButtonPressed);
+            List<Person> ShitList = People.Where(person => person.CurrentFloor == person.TargetFloor && !person.InElevator).ToList();
+            foreach (var person in ShitList)
+            {
+                People.Remove(person);
+            }
+            
+
         }
 
-        public void SendRandomElevator(int floor, bool upButtonPressed)
+        public void ResetButton(int currentFloor, ElevatorState status)
         {
-            var random = new Random();
-            var elevator = Elevators[random.Next(0, Elevators.Count)];
-            elevator.AddTarget(floor, upButtonPressed);
+            switch (status)
+            {
+                case ElevatorState.GoingDown:
+                    ButtonPressed.Where(command => command.Floor == currentFloor)
+                        .Where(command => command.Direction == Direction.Down).ToList<Command>().ForEach(command => ButtonPressed.Remove(command));
+                    break;
+                case ElevatorState.GoingUp:
+                    ButtonPressed.Where(command => command.Floor == currentFloor)
+                        .Where(command => command.Direction == Direction.Up).ToList<Command>().ForEach(command => ButtonPressed.Remove(command));
+                    break;
+                case ElevatorState.Waiting:
+                    ResetButton(currentFloor, ElevatorState.GoingUp);
+                    ResetButton(currentFloor, ElevatorState.GoingDown);
+                    break;
+            }
         }
-
     }
 }
