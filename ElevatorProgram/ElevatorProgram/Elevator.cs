@@ -165,7 +165,6 @@ namespace ElevatorProgram
 
         private void GoToTarget()
         {
-            ElevatorProgram.PrintText($"GoToFloor: {GoToFloor}");
             if (GoToFloor == CurrentFloor)
             {
                 if (GoToDirection == Direction.Down)
